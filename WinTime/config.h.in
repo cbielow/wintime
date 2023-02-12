@@ -1,0 +1,8 @@
+// CMake auto-generated file.
+// Do not modify content manually!
+
+#cmakedefine WINTIME_EXE "@WINTIME_EXE@.exe"
+#cmakedefine WINTIME_EXE_OTHERARCH "@WINTIME_EXE_OTHERARCH@.exe"
+#cmakedefine WINTIME_DLL "@WINTIME_DLL@.dll"
+
+#cmakedefine CMAKE_PROJECT_VERSION "@CMAKE_PROJECT_VERSION@"
