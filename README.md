@@ -53,7 +53,7 @@ WinTime64 -a -o log.txt Firefox.exe
 
 ##### Precompiled Binary
 
-The easiest is probably to use the precompiled executables `WinTime32.exe` and `WinTime64.exe`, see Releases.
+The easiest is probably to use the precompiled executables `WinTime32.exe` and `WinTime64.exe`, see [Releases](https://github.com/cbielow/wintime/releases).
 If you have 64-bit targets (=executables you want to analyse), you need to run the 64-bit version, and vice versa for 32-bit targets.
 If do not know the architecture of your target, simply invoke any of `WinTime32.exe` or `WinTime64.exe` -- WinTime will automatically switch to the correct architecture depending on the target.
 
