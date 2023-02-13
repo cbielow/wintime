@@ -45,6 +45,8 @@ namespace WinTime
 
     static std::wstring concatArguments(const std::string& exe, std::vector<std::string> command_args);
 
+    static std::wstring searchPATH(const std::wstring& exe, bool verbose = false);
+
     Process(const std::wstring& target_exe, std::wstring& p_command_args, DWORD dwCreationFlags = 0, bool search_path = true);
 
     /// Was the process succesfully created in the C'tor?

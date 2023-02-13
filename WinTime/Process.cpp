@@ -28,10 +28,13 @@
 #include <windows.h>
 
 #include <codecvt>
+#include <filesystem>
+
 #pragma comment (lib, "Shlwapi.lib")
 #include <Shlwapi.h>   // for PathRemoveFileSpec
 
 #include "Process.h"
+#include <iostream>
 
 using namespace std;
 
@@ -106,6 +109,22 @@ namespace WinTime
       result += ' ';
     }
     return result;
+  }
+
+  std::wstring Process::searchPATH(const std::wstring& target_exe, bool verbose)
+  {
+    if (!std::filesystem::exists(target_exe))
+    {
+      TCHAR buffer[1000];
+      SearchPath(NULL, &target_exe[0], TEXT(".exe"), sizeof(buffer) / sizeof(TCHAR), buffer, NULL);
+      std::wstring result = buffer;
+      if (verbose)
+      {
+        std::wcout << "Found '" << target_exe << "' in PATH as '" << result << "'.\n";
+      }
+      return result;
+    }
+    return target_exe;
   }
 
   Process::Process(const std::wstring& target_exe, std::wstring& p_command_args, DWORD dwCreationFlags, bool search_path)
