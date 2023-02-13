@@ -95,7 +95,7 @@ This way, WinTime will automatically switch to the correct architecture dependin
 ## Development
 
 Want to contribute? Great!
-Open a [bug report, feature request](https://github.com/cbielow/wintime/issues) or [pull request](https://github.com/cbielow/wintime/pull]).
+Open a [bug report, feature request](https://github.com/cbielow/wintime/issues) or [pull request](https://github.com/cbielow/wintime/pull).
 
 ## Technical details
 
@@ -112,6 +112,7 @@ The CPU time (wall time, kernel time, user time) are high resolution, but includ
 
 ## License
 MIT
+
 **Free Software, Hell Yeah!**
 
 ## Acknowledgements
