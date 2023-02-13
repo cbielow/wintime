@@ -35,10 +35,27 @@ Measure the execution parameters of MS Excel
 WinTime64 "C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE"
 ```
 
-Same, for Firefox, but with additional logging to `log.txt` (append mode)
+
+The output on the command line might look something like this:
+```
+PageFaultCount: 40224
+PeakWorkingSetSize: 134.2 MiB
+QuotaPeakPagedPoolUsage: 1.685 MiB
+QuotaPeakNonPagedPoolUsage: 89.02 KiB
+PeakPagefileUsage: 120.1 MiB
+Creation time 2023/02/13 10:19:04.200
+    Exit time 2023/02/13 10:19:09.362
+    Wall time:  0 days, 00:00:05.161 (5.16 seconds)
+    User time:  0 days, 00:00:00.484 (0.48 seconds)
+  Kernel time:  0 days, 00:00:00.343 (0.34 seconds)
+```
+
+
+Same, for Firefox, but with additional logging to a `log.txt` file (append mode)
 ```
 WinTime64 -a -o log.txt Firefox.exe
 ```
+
 
 ## Features
 
