@@ -251,7 +251,7 @@ int main(int argc, char** argv)
   const auto arch_result = checkMatchingArch(&wcommand[0]);
   if (p_verbose || arch_result != ArchMatched::SAME)
   {
-    std::cout << converter.to_bytes(getArchMatchedExplanation(arch_result, &wcommand[0])) << '\n';
+    std::wcout << getArchMatchedExplanation(arch_result, &wcommand[0]) << '\n';
   }
   if (arch_result == ArchMatched::TARGET_UNKNOWN)
   {
@@ -265,7 +265,7 @@ int main(int argc, char** argv)
     std::wstring wintime_other = self_dir + L"\\" + converter.from_bytes(std::string(WINTIME_EXE_OTHERARCH));
     if (!std::filesystem::exists(wintime_other))
     {
-      std::cerr << "Cannot find '" << converter.to_bytes(wintime_other) << "; Please make sure its present or invoke it manually!\n";
+      std::wcerr << "Cannot find '" << wintime_other << "'; Please make sure it is present or invoke it manually!\n";
       exit(1);
     }
     
@@ -283,14 +283,14 @@ int main(int argc, char** argv)
   
   if (p_verbose)
   {
-    std::cerr << "CMD {ARGS}:\n  " << converter.to_bytes(wcommand_args) << '\n';
+    std::wcerr << "CMD {ARGS}:\n  " << (wcommand_args) << '\n';
   }
 
   std::wstring dll_path = self_dir + L"\\" + converter.from_bytes(std::string(WINTIME_DLL));
 
   if (!std::filesystem::exists(dll_path))
   {
-    std::cerr << "Could not find DLL '" << converter.to_bytes(dll_path) << "' for injection. Make sure its present!\n";
+    std::wcerr << "Could not find DLL '" << (dll_path) << "' for injection. Make sure it is present!\n";
     return(1);
   }
 
