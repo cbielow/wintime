@@ -61,23 +61,35 @@ If do not know the architecture of your target, simply invoke any of `WinTime32.
 
 Alternatively, you can compile WinTime by cloning this repo, running CMake and build the project.
 It builds fine using Visual Studio 2022. Other versions of Visual Studio have not been tested!
+We will build the 32-bit version, as well as the 64-bit version here.
+Note that it is currently impossible to have both architectures in a single Visual Studio Solution file when using CMake.
+Hence, we use two build trees:
 
 ```
 git clone https://github.com/cbielow/wintime.git
+
 mkdir wintime_build32
 cd wintime_build32
 cmake -G "Visual Studio 17 2022"  -A Win32 ..\wintime
 msbuild -p:Configuration=Release ALL_BUILD.vcxproj
 cd ..
+
 mkdir wintime_build64
 cd wintime_build64
 cmake -G "Visual Studio 17 2022"  -A x64 ..\wintime
 msbuild -p:Configuration=Release ALL_BUILD.vcxproj
+
 ```
 
 This will create an executable in `wintime_build32\Release\WinTime32.exe` and `wintime_build64\Release\WinTime64.exe`
 If you have 64-bit targets (=executables you want to analyse), you need to run the 64-bit version, and vice versa for 32-bit targets.
 If do not know the architecture of your target, simply copy the `WinTime32.exe`, `WinTime64.exe` (and the accompanying `WinTimeDll32.dll` and `WinTimeDll64.dll`) into a single folder.
+
+```
+cd ..
+copy wintime_build64\WinTime\Release\WinTime* wintime_build32\WinTime\Release
+```
+
 This way, WinTime will automatically switch to the correct architecture depending on the target.
 
 ## Development
