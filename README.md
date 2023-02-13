@@ -32,12 +32,12 @@ Answer: use WinTime :-)
 
 Measure the execution parameters of MS Excel
 ```
-WinTime "C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE"
+WinTime64 "C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE"
 ```
 
 Same, for Firefox, but with additional logging to `log.txt` (append mode)
 ```
-WinTime -a -o log.txt Firefox.exe
+WinTime64 -a -o log.txt Firefox.exe
 ```
 
 ## Features
