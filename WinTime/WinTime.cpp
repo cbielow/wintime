@@ -131,7 +131,7 @@ namespace WinTime
   std::optional<TargetInfo> InjectDll(__in LPCWSTR lpcwszDll, const std::wstring& target_path, std::wstring& p_command_args)
   {
     std::optional<TargetInfo> result;
-    Process process(target_path, p_command_args, CREATE_SUSPENDED, true);
+    Process process(target_path, p_command_args, CREATE_SUSPENDED);
     if (!process.wasCreated())
     {
       PrintError(TEXT("CreateProcess"));
@@ -243,7 +243,7 @@ int main(int argc, char** argv)
   }
 
   std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-  std::wstring wcommand = converter.from_bytes(args::get(p_command));
+  std::wstring wcommand = Process::searchPATH(converter.from_bytes(args::get(p_command)), p_verbose);
 
 
   const auto self_dir = Process::getPathToCurrentProcess();
@@ -270,7 +270,7 @@ int main(int argc, char** argv)
     }
     
     // it exists... now invoke it and quit this process
-    Process process(wintime_other, Process::concatArguments(converter.to_bytes(wintime_other), argc - 1, argv + 1), NORMAL_PRIORITY_CLASS, false);
+    Process process(wintime_other, Process::concatArguments(converter.to_bytes(wintime_other), argc - 1, argv + 1), NORMAL_PRIORITY_CLASS);
     if (!process.wasCreated())
     {
       exit(1);

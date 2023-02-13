@@ -127,25 +127,15 @@ namespace WinTime
     return target_exe;
   }
 
-  Process::Process(const std::wstring& target_exe, std::wstring& p_command_args, DWORD dwCreationFlags, bool search_path)
+  Process::Process(const std::wstring& target_exe, std::wstring& p_command_args, DWORD dwCreationFlags)
   {
     process_information_ = new PROCESS_INFORMATION;
     STARTUPINFO             startupInfo;
     memset(&startupInfo, 0, sizeof(startupInfo));
     startupInfo.cb = sizeof(STARTUPINFO);
 
-    // CreateProcess does not use the search path
-    // We must do that manually
-    const WCHAR* target_used = &target_exe[0];
-    TCHAR buffer[1000];
-    if (search_path)
-    {
-      SearchPath(NULL, &target_exe[0], TEXT(".exe"), sizeof(buffer) / sizeof(TCHAR), buffer, NULL);
-      target_used = buffer;
-    }
-
-    was_created_ = CreateProcess(target_used, &p_command_args[0], NULL, NULL, FALSE,
-      dwCreationFlags, NULL, NULL, &startupInfo, process_information_);
+    was_created_ = CreateProcess(&target_exe[0], &p_command_args[0], NULL, NULL, FALSE,
+                                 dwCreationFlags, NULL, NULL, &startupInfo, process_information_);
   }
 
   bool Process::wasCreated() const
