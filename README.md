@@ -30,7 +30,7 @@ Answer: use WinTime :-)
 
 ## Example
 
-Measure the execution parameters of MS Excel
+Measure peak RAM and CPU/wall/user time of MS Excel
 ```
 WinTime64 "C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE"
 ```
@@ -56,7 +56,7 @@ Same for Firefox, but with additional logging to a `log.txt` file (append mode)
 WinTime64 -a -o log.txt -- Firefox.exe
 ```
 
-As you can see above, when passing additional arguments to either WinTime or your executable, it is probably best to use the `--` separator commonly found on Linux. This ensures that arguments to WinTime vs. your executable are clearly distinct.
+When passing additional arguments to either WinTime or your executable, it is probably best to use the `--` separator commonly found on Linux. This ensures that arguments to WinTime vs. your executable are clearly distinct.
 Imagine your program has a `-v` flag (WinTime also has it). Calling
 ```
 WinTime64 yourProg.exe -v
