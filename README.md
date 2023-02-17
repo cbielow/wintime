@@ -56,17 +56,17 @@ Same for Firefox, but with additional logging to a `log.txt` file (append mode)
 WinTime64 -a -o log.txt -- Firefox.exe
 ```
 
-As you can see above, passing when additional arguments to either WinTime or your executable, it is probably best to use the `--` separator commonly found on Linux. This ensures that arguments to WinTime vs. your executable are clearly distinct.
+As you can see above, when passing additional arguments to either WinTime or your executable, it is probably best to use the `--` separator commonly found on Linux. This ensures that arguments to WinTime vs. your executable are clearly distinct.
 Imagine your program has a `-v` flag (WinTime also has it). Calling
 ```
 WinTime64 yourProg.exe -v
 ```
 will actually assign the `-v` to WinTime, and not pass it on to `yourProg.exe`.
-To make sure all arguments after `yourProg.exe` are actually forwarded to yourProg.exe, you should:
+To make sure all arguments after `yourProg.exe` are actually forwarded to yourProg.exe, use the `--` separator:
 ```
 WinTime64 [wintime_options] -- yourProg.exe -v
 ```
-where `[wintime_options]` is the place to put extra arguments for WinTime.
+where `[wintime_options]` is the place for optional arguments to WinTime itself.
 
 
 
