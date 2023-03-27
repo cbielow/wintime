@@ -30,15 +30,16 @@
 
 
 #include "Arch.h"
+#include "Process.h"
 
 using namespace std;
 
 namespace WinTime
 {
-  Arch getArch(LPCWSTR path_to_exe)
+  Arch getArch(const std::string& path_to_exe)
   {
     DWORD result;
-    if (!GetBinaryTypeW(path_to_exe, &result))
+    if (!GetBinaryTypeW(&widen(path_to_exe)[0], &result))
     { // not an executable
       return Arch::NOT_EXECUTABLE;
     }
@@ -55,26 +56,26 @@ namespace WinTime
     }
   }
 
-  std::wstring getArchMatchedExplanation(const ArchMatched what, LPCWSTR path_to_target_exe)
+  std::string getArchMatchedExplanation(const ArchMatched what, LPCSTR path_to_target_exe)
   {
     switch (what)
     {
     break; case ArchMatched::SAME:
-      return std::wstring(L"Architectures match") + (sizeof(void*) == 8 ? L" (64bit)" : L" (32bit)");
+      return std::string("Architectures match") + (sizeof(void*) == 8 ? " (64bit)" : " (32bit)");
     break; case ArchMatched::MIXED:
       if (hostIs64Bit())
-        return std::wstring(L"WinTime is 64 bit, but target (") + path_to_target_exe + L") is 32 bit. Please use 32 bit version of WinTime.";
+        return std::string("WinTime is 64 bit, but target (") + path_to_target_exe + ") is 32 bit. Please use 32 bit version of WinTime.";
       else
-        return std::wstring(L"WinTime is 32 bit, but target (") + path_to_target_exe + L") is 64 bit. Please use 64 bit version of WinTime.";
+        return std::string("WinTime is 32 bit, but target (") + path_to_target_exe + ") is 64 bit. Please use 64 bit version of WinTime.";
     break; case ArchMatched::TARGET_UNKNOWN:
-      return std::wstring(L"Target Architecture (of ") + path_to_target_exe + L") is neither 32bit nor 64bit Windows, but something else.";
+      return std::string("Target Architecture (of ") + path_to_target_exe + ") is neither 32bit nor 64bit Windows, but something else.";
     default:
       throw std::logic_error("Missed a case? Please report a bug!");
     };
 
   }
 
-  ArchMatched checkMatchingArch(LPCWSTR target_exe)
+  ArchMatched checkMatchingArch(const std::string& target_exe)
   {
     const auto target_arch = getArch(target_exe);
     constexpr const Arch this_arch = hostIs64Bit() ? Arch::x64 : Arch::x86;
