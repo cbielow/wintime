@@ -104,6 +104,8 @@ namespace WinTime
     /// Truncates the file to the last write position and closes the stream
     ~LockedFile();
   };
+  
+  struct ClientProcessMemoryCounter;
 
   class FileLog
   {

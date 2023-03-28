@@ -105,9 +105,8 @@ namespace WinTime
     //std::string_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
     command_args.insert(command_args.begin(), exe); // prepend the exe
     std::string result;
-    for (auto arga : command_args)
+    for (auto arg : command_args)
     {
-      std::string arg = (arga);
       // Does arg have quotes? E.g. '-DQT_TESTCASE_BUILDDIR="C:/dev/openms_build_ninja"'
       if (arg.find('"') != std::string::npos)
       { // escape them, otherwise the commandline parser will wrongly interpret those quotes

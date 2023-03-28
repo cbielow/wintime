@@ -22,8 +22,11 @@
 
 #include "FileLog.h"
 
+#include "Memory.h"
+
 #include <io.h> // for _chsize_s()
 #include <chrono>
+#include <iostream>
 #include <thread>
 
 using namespace std;
@@ -131,7 +134,7 @@ namespace WinTime
     std::stringstream content;
     if (lockf.isFileEmpty())
     { // at start of file .. write header
-      printLineToStream(content, '\t', [](auto type, const char sep) { return type.printHeader(sep); }, Command(), PTime(), ClientProcessMemoryCounter(PROCESS_MEMORY_COUNTERS()));
+      printLineToStream(content, '\t', [](auto type, const char sep) { return type.printHeader(sep); }, Command(), time, pmc);
     }
     printLineToStream(content, '\t', [](auto type, const char sep) { return type.print(sep); }, Command{ cmd }, time, pmc);
     lockf.write(content.str().c_str());

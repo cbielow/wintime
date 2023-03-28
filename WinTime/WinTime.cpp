@@ -36,13 +36,10 @@
 
 #include "Arch.h"
 #include "config.h"
-#include "Time.h"
 #include "FileLog.h"
+#include "Memory.h"
 #include "Process.h"
-// from NamedPipeLib
-#include <Defs.h>
-#include <Memory.h>
-#include <NamedPipeServer.h>
+#include "Time.h"
 
 #include "args.hxx"  // arg parser
 
@@ -92,6 +89,7 @@ namespace WinTime
   struct TargetInfo
   {
     PTime ptime{};
+    ClientProcessMemoryCounter pmc;
     DWORD exit_code{1};
   };
 
@@ -118,59 +116,15 @@ namespace WinTime
     LocalFree(lpMsgBuf);
   }
 
-  std::optional<TargetInfo> InjectDll(__in LPCSTR lpcwszDll, const std::string& target_path, std::string& p_command_args)
+  std::optional<TargetInfo> runExternalProcess(const std::string& target_path, std::string& p_command_args)
   {
     std::optional<TargetInfo> result;
-    Process process(target_path, p_command_args, CREATE_SUSPENDED);
+    Process process(target_path, p_command_args);
     if (!process.wasCreated())
     {
       PrintError("CreateProcess");
       return result;
     }
-
-    LPVOID lpLoadLibraryW = GetProcAddress(GetModuleHandleW(L"KERNEL32.DLL"), "LoadLibraryW");
-
-    if (!lpLoadLibraryW)
-    {
-      PrintError("GetProcAddress");
-      return result;
-    }
-
-    SIZE_T nLength = strlen(lpcwszDll);
-
-    // allocate mem for dll name
-    LPVOID lpRemoteString = VirtualAllocEx(process.getPI().hProcess, NULL, nLength + 1, MEM_COMMIT, PAGE_READWRITE);
-    if (!lpRemoteString)
-    {
-      PrintError("VirtualAllocEx");
-      return result;
-    }
-
-    // write dll name
-    if (!WriteProcessMemory(process.getPI().hProcess, lpRemoteString, lpcwszDll, nLength, NULL)) {
-
-      PrintError("WriteProcessMemory");
-      // free allocated memory
-      VirtualFreeEx(process.getPI().hProcess, lpRemoteString, 0, MEM_RELEASE);
-
-      return result;
-    }
-
-    // call loadlibraryw
-    HANDLE hThread = CreateRemoteThread(process.getPI().hProcess, NULL, NULL, (LPTHREAD_START_ROUTINE)lpLoadLibraryW, lpRemoteString, NULL, NULL);
-  
-    if (!hThread) {
-      PrintError("CreateRemoteThread");
-    }
-    else {
-      WaitForSingleObject(hThread, 4000);
-
-      //resume suspended process
-      ResumeThread(process.getPI().hThread);
-    }
-
-    //  free allocated memory
-    VirtualFreeEx(process.getPI().hProcess, lpRemoteString, 0, MEM_RELEASE);
 
     // wait for the child process to finish
     process.waitForFinish();
@@ -181,9 +135,10 @@ namespace WinTime
       PrintError("Could not get return code of target process");
     }
 
+    ClientProcessMemoryCounter pmc(process.getPI().hProcess);
     auto timings = getProcessTime(process.getPI().hProcess);
 
-    return TargetInfo{ timings, exit_code };
+    return TargetInfo{ timings, pmc, exit_code };
   }
 } // namespace
 
@@ -283,44 +238,29 @@ int wmain(int argc, wchar_t** argv_wide)
       std::wcerr << "CMD {ARGS}:\n  " << widen(wcommand_args) << '\n';
     }
 
-    std::string dll_path = self_dir + "\\" + (std::string(WINTIME_DLL));
-
-    if (!std::filesystem::exists(dll_path))
+    
+    auto external_process_result = runExternalProcess(command.c_str(), wcommand_args);
+    if (!external_process_result)
     {
-      std::cerr << "Could not find DLL '" << (dll_path) << "' for injection. Make sure it is present!\n";
-      return(1);
-    }
-
-    // create pipe before injecting DLL
-    NamedPipeServer ps;
-
-    auto inject_result = InjectDll(dll_path.c_str(), command.c_str(), wcommand_args);
-    if (!inject_result)
-    {
-      std::cerr << "Injecting Dll failed. Aborting.\n";
+      std::cerr << "Running external process failed. Aborting.\n";
       return 1;
     }
 
-    char buffer[sizeof(ClientProcessMemoryCounter)];
-    DWORD read_bytes;
-    if (!ps.readFromPipe(buffer, sizeof(buffer), read_bytes))
+    // only print to commandline if verbose or not writing to file
+    if (!p_output_file || p_verbose)
     {
-      std::cerr << "Could not read client data from pipe!\n";
+      external_process_result->pmc.print();
+      external_process_result->ptime.print();
     }
-    ClientProcessMemoryCounter pmc(buffer);
-    pmc.print();
-
-    inject_result->ptime.print();
 
     if (p_output_file)
     {
       FileLog fl(p_output_file.Get(), p_append.Get() ? OpenMode::APPEND : OpenMode::OVERWRITE);
-      fl.log((wcommand_args), inject_result->ptime, pmc);
+      fl.log(wcommand_args, external_process_result->ptime, external_process_result->pmc);
     }
 
     // return the same exit code as target process
-    return inject_result->exit_code;
-
+    return external_process_result->exit_code;
   }
   catch (std::exception& ex)
   {
