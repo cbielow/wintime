@@ -63,25 +63,27 @@ namespace WinTime
 
   std::string narrow(const std::wstring& wide_str)
   {
-    char buffer[1000];
-    WideCharToMultiByte(CP_UTF8,
+    std::string buffer(wide_str.size() * 2 + 2, '\0');
+    auto bytes_written = WideCharToMultiByte(CP_UTF8,
       0,
       wide_str.c_str(),
       -1,
-      buffer, 1000,
+      buffer.data(), 1000,
       NULL, NULL);
-    return std::string(buffer);
+    buffer.resize(bytes_written);
+    return buffer;
   }
 
-  std::wstring widen(const std::string uft8_str)
+  std::wstring widen(const std::string& uft8_str)
   {
-    wchar_t buffer[1000];
-    MultiByteToWideChar(CP_UTF8,
+    std::wstring buffer(uft8_str.size() + 2, '\0');
+    auto bytes_written = MultiByteToWideChar(CP_UTF8,
       0,
       uft8_str.c_str(),
       -1,
-      buffer, 1000);
-    return std::wstring(buffer);
+      buffer.data(), buffer.size());
+    buffer.resize(bytes_written);
+    return buffer;
   }
 
   std::string Process::getPathToCurrentProcess()
@@ -164,9 +166,11 @@ namespace WinTime
     process_information_ = new PROCESS_INFORMATION;
     STARTUPINFOW             startupInfo;
     memset(&startupInfo, 0, sizeof(startupInfo));
-    startupInfo.cb = sizeof(STARTUPINFOA);
+    startupInfo.cb = sizeof(startupInfo);
     std::string pca = p_command_args;
-    was_created_ = CreateProcessW(&widen(target_exe)[0], &widen(pca)[0], NULL, NULL, FALSE,
+    auto texe = widen(target_exe);
+    auto pargs = widen(pca);
+    was_created_ = CreateProcessW(&texe[0], &pargs[0], NULL, NULL, FALSE,
                                  dwCreationFlags, NULL, NULL, &startupInfo, process_information_);
   }
 

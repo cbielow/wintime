@@ -70,7 +70,7 @@ namespace WinTime
 
   std::string narrow(const std::wstring& wide_str);
 
-  std::wstring widen(const std::string uft8_str);
+  std::wstring widen(const std::string& uft8_str);
 
 
 } // namespace
