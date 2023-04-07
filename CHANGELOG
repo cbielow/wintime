@@ -1,0 +1,9 @@
+
+V1.1  - 2023/04/07
+ - Unicode Support for command line arguments
+ - report local time for Creation/Exit time of process instead of UTC
+ - fix ExampleTarget RAM usage in Release mode (RAM allocation was not effective)
+ - switch from dll-injection to external querying of RAM usage
+ 
+V1.0  - 2023/02/13
+ - initial release

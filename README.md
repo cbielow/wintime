@@ -59,10 +59,11 @@ WinTime64 -a -o log.txt Firefox.exe
 
 ## Features
 
- - peak **RAM** usage
- - total **CPU time** (wall, kernel, user) with high resolution
- - PageFaultCount
- - PeakPagefileUsage
+ - reports:
+    - peak **RAM** usage
+   - total **CPU time** (wall, kernel, user) with high resolution
+   - PageFaultCount
+   - PeakPagefileUsage
  - log file output
  - supports Unicode program names and arguments via UTF-8 encoding
  - similar command line interface as /usr/bin/time
