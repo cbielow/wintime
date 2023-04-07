@@ -78,9 +78,9 @@ int main(int argc, char** argv)
   if (argc == 1)
   {
     std::cerr << "Usage " << argv[0] << " <MiB alloc> <ms sleep> <stats>\n"
-                 "  MiB alloc: [number] MiB to allocate\n"
-                 "  ms sleep:  [number, optional] Milliseconds to sleep\n"
-                 "  stats:     [any value, optional] Print memory usage using internal functions (useful to estimate overhead of external WinTime)\n";
+                 "  MiB alloc: [number] MiB to allocate (this may take some time, especially for larger allocations)\n"
+                 "  ms sleep:  [number, optional] Milliseconds to sleep (in addition to the time it takes to allocate -- see above)\n"
+                 "  stats:     [any value, optional] Print memory usage using internal functions (useful to compare against the results of an external WinTime call)\n";
   } 
   if (argc >= 2)
   {
