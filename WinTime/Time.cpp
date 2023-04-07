@@ -107,8 +107,11 @@ namespace WinTime
 
   PTime getProcessTime(HANDLE hProcess)
   {
-    FILETIME lpCreationTime{},
+    FILETIME 
+      lpCreationTime{},
+      lpCreationTimeLocal{},
       lpExitTime{},
+      lpExitTimeLocal{},
       lpKernelTime{},
       lpUserTime{};
 
@@ -122,9 +125,12 @@ namespace WinTime
       std::cerr << "Could not query Process timings\n";
       return PTime{};
     }
+    FileTimeToLocalFileTime(&lpCreationTime, &lpCreationTimeLocal);
+    FileTimeToLocalFileTime(&lpExitTime, &lpExitTimeLocal);
+
     SYSTEMTIME t_create, t_exit;
-    FileTimeToSystemTime(&lpCreationTime, &t_create);
-    FileTimeToSystemTime(&lpExitTime, &t_exit);
+    FileTimeToSystemTime(&lpCreationTimeLocal, &t_create);
+    FileTimeToSystemTime(&lpExitTimeLocal, &t_exit);
     return PTime{ toDateString(t_create),
       toDateString(t_exit),
       toSeconds(lpUserTime),

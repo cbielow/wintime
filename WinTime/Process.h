@@ -29,28 +29,28 @@ namespace WinTime
 {
   
   
-  int countBackslashesAtEnd(const std::wstring& arg);
+  int countBackslashesAtEnd(const std::string& arg);
 
-  void substitute(std::wstring& str, const std::wstring& search,
-    const std::wstring& replace);
+  void substitute(std::string& str, const std::string& search,
+    const std::string& replace);
 
 
   class Process
   {
   public:
 
-    static std::wstring getPathToCurrentProcess();
+    static std::string getPathToCurrentProcess();
 
-    static std::wstring concatArguments(const std::string& exe, int more_args_argc, char** more_args_argv);
+    static std::string concatArguments(const std::string& exe, int more_args_argc, const char** more_args_argv);
 
-    static std::wstring concatArguments(const std::string& exe, std::vector<std::string> command_args);
+    static std::string concatArguments(const std::string& exe, std::vector<std::string> command_args);
 
     /// search for an executable on the %PATH% environment variable.
-    static std::wstring searchPATH(const std::wstring& exe, bool verbose = false);
+    static std::string searchPATH(const std::string& exe, bool verbose = false);
 
     /// Starts a process, with extra arguments (if not empty)
     /// The @p target_exe must be an absolute or relative path. The %PATH% environment variable is not used! (use @p searchPATH if you need that)
-    Process(const std::wstring& target_exe, std::wstring& p_command_args, DWORD dwCreationFlags = 0);
+    Process(const std::string& target_exe, const std::string& p_command_args, DWORD dwCreationFlags = 0);
 
     /// Was the process succesfully created in the C'tor?
     bool wasCreated() const;
@@ -67,5 +67,10 @@ namespace WinTime
     PROCESS_INFORMATION* process_information_;
     bool was_created_;
   };
+
+  std::string narrow(const std::wstring& wide_str);
+
+  std::wstring widen(const std::string& uft8_str);
+
 
 } // namespace

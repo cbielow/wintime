@@ -38,7 +38,7 @@ namespace WinTime
 
   /// Get architecture (32 or 64 bit) of executable
   /// Return Arch::NOT_EXECUTABLE on error
-  Arch getArch(LPCWSTR path_to_exe);
+  Arch getArch(const std::string& path_to_exe);
 
   constexpr bool hostIs64Bit()
   {
@@ -52,9 +52,9 @@ namespace WinTime
     TARGET_UNKNOWN  ///< we surely know the host target (that's us; but target might be Arch::OTHER etc)
   };
 
-  std::wstring getArchMatchedExplanation(const ArchMatched what, LPCWSTR path_to_target_exe);;
+  std::string getArchMatchedExplanation(const ArchMatched what, LPCSTR path_to_target_exe);;
 
   /// Does the architecture of @p target_exe match the architecture of the current process?
-  ArchMatched checkMatchingArch(LPCWSTR target_exe);
+  ArchMatched checkMatchingArch(const std::string& target_exe);
 
 } // namespace 

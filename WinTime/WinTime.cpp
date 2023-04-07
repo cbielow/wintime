@@ -36,13 +36,10 @@
 
 #include "Arch.h"
 #include "config.h"
-#include "Time.h"
 #include "FileLog.h"
+#include "Memory.h"
 #include "Process.h"
-// from NamedPipeLib
-#include <Defs.h>
-#include <Memory.h>
-#include <NamedPipeServer.h>
+#include "Time.h"
 
 #include "args.hxx"  // arg parser
 
@@ -92,15 +89,15 @@ namespace WinTime
   struct TargetInfo
   {
     PTime ptime{};
+    ClientProcessMemoryCounter pmc;
     DWORD exit_code{1};
   };
 
-  void PrintError(LPTSTR lpszFunction)
+  void PrintError(std::string lpszFunction)
   {
     // Retrieve the system error message for the last-error code
 
     LPVOID lpMsgBuf;
-    LPVOID lpDisplayBuf;
     DWORD dw = GetLastError();
 
     FormatMessage(
@@ -115,72 +112,19 @@ namespace WinTime
 
     // Display the error message
 
-    lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT,
-      (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
-    StringCchPrintf((LPTSTR)lpDisplayBuf,
-      LocalSize(lpDisplayBuf) / sizeof(TCHAR),
-      TEXT("%s failed with error %d: %s"),
-      lpszFunction, dw, lpMsgBuf);
-
-    wprintf(L"%s", (wchar_t*)lpDisplayBuf);
-
+    std::cerr << lpszFunction << " failed with error :" << std::to_string(dw) << ' ' << std::string((char*)lpMsgBuf);
     LocalFree(lpMsgBuf);
-    LocalFree(lpDisplayBuf);
   }
 
-  std::optional<TargetInfo> InjectDll(__in LPCWSTR lpcwszDll, const std::wstring& target_path, std::wstring& p_command_args)
+  std::optional<TargetInfo> runExternalProcess(const std::string& target_path, std::string& p_command_args)
   {
     std::optional<TargetInfo> result;
-    Process process(target_path, p_command_args, CREATE_SUSPENDED);
+    Process process(target_path, p_command_args);
     if (!process.wasCreated())
     {
-      PrintError(TEXT("CreateProcess"));
+      PrintError("CreateProcess");
       return result;
     }
-
-    LPVOID lpLoadLibraryW = GetProcAddress(GetModuleHandle(L"KERNEL32.DLL"), "LoadLibraryW");
-
-    if (!lpLoadLibraryW)
-    {
-      PrintError(TEXT("GetProcAddress"));
-      return result;
-    }
-
-    SIZE_T nLength = wcslen(lpcwszDll) * sizeof(WCHAR);
-
-    // allocate mem for dll name
-    LPVOID lpRemoteString = VirtualAllocEx(process.getPI().hProcess, NULL, nLength + 1, MEM_COMMIT, PAGE_READWRITE);
-    if (!lpRemoteString)
-    {
-      PrintError(TEXT("VirtualAllocEx"));
-      return result;
-    }
-
-    // write dll name
-    if (!WriteProcessMemory(process.getPI().hProcess, lpRemoteString, lpcwszDll, nLength, NULL)) {
-
-      PrintError(TEXT("WriteProcessMemory"));
-      // free allocated memory
-      VirtualFreeEx(process.getPI().hProcess, lpRemoteString, 0, MEM_RELEASE);
-
-      return result;
-    }
-
-    // call loadlibraryw
-    HANDLE hThread = CreateRemoteThread(process.getPI().hProcess, NULL, NULL, (LPTHREAD_START_ROUTINE)lpLoadLibraryW, lpRemoteString, NULL, NULL);
-  
-    if (!hThread) {
-      PrintError(TEXT("CreateRemoteThread"));
-    }
-    else {
-      WaitForSingleObject(hThread, 4000);
-
-      //resume suspended process
-      ResumeThread(process.getPI().hThread);
-    }
-
-    //  free allocated memory
-    VirtualFreeEx(process.getPI().hProcess, lpRemoteString, 0, MEM_RELEASE);
 
     // wait for the child process to finish
     process.waitForFinish();
@@ -188,19 +132,27 @@ namespace WinTime
     DWORD exit_code{ 1 };
     if (!GetExitCodeProcess(process.getPI().hProcess, &exit_code))
     {
-      PrintError(TEXT("Could not get return code of target process"));
+      PrintError("Could not get return code of target process");
     }
 
+    ClientProcessMemoryCounter pmc(process.getPI().hProcess);
     auto timings = getProcessTime(process.getPI().hProcess);
 
-    return TargetInfo{ timings, exit_code };
+    return TargetInfo{ timings, pmc, exit_code };
   }
 } // namespace
 
 using namespace WinTime;
 
-int main(int argc, char** argv)
+int wmain(int argc, wchar_t** argv_wide)
 {
+  std::vector<const char*> argv(argc);
+  std::vector<std::string> argv_data(argc);
+  for (int i = 0; i < argc; ++i)
+  {
+    argv_data[i] = narrow(argv_wide[i]);
+    argv[i] = argv_data[i].c_str();
+  }
   args::ArgumentParser p_parser("WinTime - measure time and memory usage of a process.", "");
   p_parser.helpParams.width = 134;
   //args::ValueFlag<int> integer(parser, "integer", "The integer flag", { 'i' });
@@ -216,7 +168,7 @@ int main(int argc, char** argv)
   args::PositionalList<std::string> p_command_args(p_parser, "ARG", "arguments to COMMAND");
   try
   {
-    p_parser.ParseCLI(argc, argv);
+    p_parser.ParseCLI(argc, &argv.front());
   }
   catch (args::Help)
   {
@@ -242,85 +194,78 @@ int main(int argc, char** argv)
     exit(0);
   }
 
-  std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-  std::wstring wcommand = Process::searchPATH(converter.from_bytes(args::get(p_command)), p_verbose);
-
-
-  const auto self_dir = Process::getPathToCurrentProcess();
-
-  const auto arch_result = checkMatchingArch(&wcommand[0]);
-  if (p_verbose || arch_result != ArchMatched::SAME)
+  try
   {
-    std::wcout << getArchMatchedExplanation(arch_result, &wcommand[0]) << '\n';
-  }
-  if (arch_result == ArchMatched::TARGET_UNKNOWN)
-  {
-    std::cerr << "Cannot determine target architecture. Is it an executable?\n";
-    exit(1);
-  }  
-  // try auto switching to WINTIME_EXE_OTHERARCH
-  if (arch_result == ArchMatched::MIXED)
-  {
-    std::cerr << "Trying to find '" << WINTIME_EXE_OTHERARCH << "' automatically...\n";
-    std::wstring wintime_other = self_dir + L"\\" + converter.from_bytes(std::string(WINTIME_EXE_OTHERARCH));
-    if (!std::filesystem::exists(wintime_other))
+    std::string command = Process::searchPATH(args::get(p_command), p_verbose);
+
+    const auto self_dir = Process::getPathToCurrentProcess();
+
+    const auto arch_result = checkMatchingArch(&command[0]);
+    if (p_verbose || arch_result != ArchMatched::SAME)
     {
-      std::wcerr << "Cannot find '" << wintime_other << "'; Please make sure it is present or invoke it manually!\n";
-      exit(1);
+      std::cout << getArchMatchedExplanation(arch_result, &command[0]) << '\n';
     }
+    if (arch_result == ArchMatched::TARGET_UNKNOWN)
+    {
+      std::cerr << "Cannot determine target architecture. Is it an executable?\n";
+      exit(1);
+    }  
+    // try auto switching to WINTIME_EXE_OTHERARCH
+    if (arch_result == ArchMatched::MIXED)
+    {
+      std::cerr << "Trying to find '" << WINTIME_EXE_OTHERARCH << "' automatically...\n";
+      std::string wintime_other = self_dir + "\\" + std::string(WINTIME_EXE_OTHERARCH);
+      if (!std::filesystem::exists(wintime_other))
+      {
+        std::cerr << "Cannot find '" << wintime_other << "'; Please make sure it is present or invoke it manually!\n";
+        exit(1);
+      }
     
-    // it exists... now invoke it and quit this process
-    Process process(wintime_other, Process::concatArguments(converter.to_bytes(wintime_other), argc - 1, argv + 1), NORMAL_PRIORITY_CLASS);
-    if (!process.wasCreated())
-    {
-      exit(1);
+      // it exists... now invoke it and quit this process
+      Process process(wintime_other, Process::concatArguments(wintime_other, argc - 1, (&argv[0]) + 1), NORMAL_PRIORITY_CLASS);
+      if (!process.wasCreated())
+      {
+        exit(1);
+      }
+      process.waitForFinish();
+      exit(0);
     }
-    process.waitForFinish();
-    exit(0);
-  }
 
-  std::wstring wcommand_args = Process::concatArguments(args::get(p_command), StringList(args::get(p_command_args)));
+    std::string wcommand_args = Process::concatArguments(args::get(p_command), StringList(args::get(p_command_args)));
   
-  if (p_verbose)
-  {
-    std::wcerr << "CMD {ARGS}:\n  " << (wcommand_args) << '\n';
+    if (p_verbose)
+    {
+      std::wcerr << "CMD {ARGS}:\n  " << widen(wcommand_args) << '\n';
+    }
+
+    
+    auto external_process_result = runExternalProcess(command.c_str(), wcommand_args);
+    if (!external_process_result)
+    {
+      std::cerr << "Running external process failed. Aborting.\n";
+      return 1;
+    }
+
+    // only print to commandline if verbose or not writing to file
+    if (!p_output_file || p_verbose)
+    {
+      external_process_result->pmc.print();
+      external_process_result->ptime.print();
+    }
+
+    if (p_output_file)
+    {
+      FileLog fl(p_output_file.Get(), p_append.Get() ? OpenMode::APPEND : OpenMode::OVERWRITE);
+      fl.log(wcommand_args, external_process_result->ptime, external_process_result->pmc);
+    }
+
+    // return the same exit code as target process
+    return external_process_result->exit_code;
   }
-
-  std::wstring dll_path = self_dir + L"\\" + converter.from_bytes(std::string(WINTIME_DLL));
-
-  if (!std::filesystem::exists(dll_path))
+  catch (std::exception& ex)
   {
-    std::wcerr << "Could not find DLL '" << (dll_path) << "' for injection. Make sure it is present!\n";
-    return(1);
-  }
-
-  // create pipe before injecting DLL
-  NamedPipeServer ps;
-
-  auto inject_result = InjectDll(dll_path.c_str(), wcommand.c_str(), wcommand_args);
-  if (!inject_result)
-  {
-    std::cerr << "Injecting Dll failed. Aborting.\n";
+    std::cerr << "Exception occured: " << ex.what() << "\nAborting...\n";
     return 1;
   }
 
-  char buffer[sizeof(ClientProcessMemoryCounter)];
-  DWORD read_bytes;
-  if (!ps.readFromPipe(buffer, sizeof(buffer), read_bytes))
-  {
-    std::cerr << "Could not read client data from pipe!\n";
-  }
-  ClientProcessMemoryCounter pmc(buffer);
-  pmc.print();
-
-  inject_result->ptime.print();
-
-  if (p_output_file)
-  {
-    FileLog fl(p_output_file.Get(), p_append.Get() ? OpenMode::APPEND : OpenMode::OVERWRITE);
-    fl.log(converter.to_bytes(wcommand_args), inject_result->ptime, pmc);
-  }
-
-  // return the same exit code as target process
-  return inject_result->exit_code;
 }

@@ -41,7 +41,7 @@ using namespace std;
 namespace WinTime
 {
 
-  int countBackslashesAtEnd(const std::wstring& arg)
+  int countBackslashesAtEnd(const std::string& arg)
   {
     int result{ 0 };
     for (auto rit = arg.rbegin(); rit != arg.rend(); ++rit)
@@ -52,8 +52,8 @@ namespace WinTime
     return result;
   }
 
-  void substitute(std::wstring& str, const std::wstring& search,
-    const std::wstring& replace) {
+  void substitute(std::string& str, const std::string& search,
+    const std::string& replace) {
     size_t pos = 0;
     while ((pos = str.find(search, pos)) != std::string::npos) {
       str.replace(pos, search.length(), replace);
@@ -61,15 +61,40 @@ namespace WinTime
     }
   }
 
-  std::wstring Process::getPathToCurrentProcess()
+  std::string narrow(const std::wstring& wide_str)
   {
-    wchar_t selfdir[MAX_PATH] = { 0 };
-    GetModuleFileName(NULL, selfdir, MAX_PATH);
-    PathRemoveFileSpec(selfdir);
-    return std::wstring(selfdir);
+    std::string buffer(wide_str.size() * 2 + 2, '\0');
+    auto bytes_written = WideCharToMultiByte(CP_UTF8,
+      0,
+      wide_str.c_str(),
+      -1,
+      buffer.data(), 1000,
+      NULL, NULL);
+    buffer.resize(bytes_written);
+    return buffer;
   }
 
-  std::wstring Process::concatArguments(const std::string& exe, int more_args_argc, char** more_args_argv)
+  std::wstring widen(const std::string& uft8_str)
+  {
+    std::wstring buffer(uft8_str.size() + 2, '\0');
+    auto bytes_written = MultiByteToWideChar(CP_UTF8,
+      0,
+      uft8_str.c_str(),
+      -1,
+      buffer.data(), buffer.size());
+    buffer.resize(bytes_written);
+    return buffer;
+  }
+
+  std::string Process::getPathToCurrentProcess()
+  {
+    wchar_t selfdir[MAX_PATH] = { 0 };
+    GetModuleFileNameW(NULL, selfdir, MAX_PATH);
+    PathRemoveFileSpecW(selfdir);
+    return narrow(selfdir);
+  }
+
+  std::string Process::concatArguments(const std::string& exe, int more_args_argc, const char** more_args_argv)
   {
     std::vector<std::string> tmp;
     for (int i = 0; i < more_args_argc; ++i)
@@ -77,18 +102,17 @@ namespace WinTime
     return concatArguments(exe, tmp);
   }
 
-  std::wstring Process::concatArguments(const std::string& exe, std::vector<std::string> command_args)
+  std::string Process::concatArguments(const std::string& exe, std::vector<std::string> command_args)
   {
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    //std::string_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
     command_args.insert(command_args.begin(), exe); // prepend the exe
-    std::wstring result;
-    for (auto arga : command_args)
+    std::string result;
+    for (auto arg : command_args)
     {
-      std::wstring arg = converter.from_bytes(arga);
       // Does arg have quotes? E.g. '-DQT_TESTCASE_BUILDDIR="C:/dev/openms_build_ninja"'
       if (arg.find('"') != std::string::npos)
       { // escape them, otherwise the commandline parser will wrongly interpret those quotes
-        substitute(arg, L"\"", L"\\\"");
+        substitute(arg, "\"", "\\\"");
       }
 
       if (arg.find(' ') != std::string::npos)
@@ -111,30 +135,42 @@ namespace WinTime
     return result;
   }
 
-  std::wstring Process::searchPATH(const std::wstring& target_exe, bool verbose)
+  std::string Process::searchPATH(const std::string& target_exe, bool verbose)
   {
-    if (!std::filesystem::exists(target_exe))
+    auto wt = widen(target_exe);
+    if (!std::filesystem::exists(wt))
     {
-      TCHAR buffer[1000];
-      SearchPath(NULL, &target_exe[0], TEXT(".exe"), sizeof(buffer) / sizeof(TCHAR), buffer, NULL);
-      std::wstring result = buffer;
+      const int BUF_SIZE = 3000;
+      wchar_t buffer[BUF_SIZE];
+      auto ret = SearchPathW(NULL, &wt[0], (L".exe"), sizeof(buffer) / sizeof(wchar_t), buffer, NULL);
+      if (!ret)
+      {
+        throw std::runtime_error("Could not find executable '" + target_exe + "' (%PATH% was also checked).");
+      }
+      if (ret > BUF_SIZE)
+      {
+        throw std::runtime_error("Path to '" + target_exe + "' is longer than " + std::to_string(BUF_SIZE) + ". Cannot store result. Fix the program or use a shorter path.");
+      }
+      std::string result = narrow(buffer);
       if (verbose)
       {
-        std::wcout << "Found '" << target_exe << "' in PATH as '" << result << "'.\n";
+        std::wcout << "Found '" << wt << "' in PATH as '" << buffer << "'.\n";
       }
       return result;
     }
     return target_exe;
   }
 
-  Process::Process(const std::wstring& target_exe, std::wstring& p_command_args, DWORD dwCreationFlags)
+  Process::Process(const std::string& target_exe, const std::string& p_command_args, DWORD dwCreationFlags)
   {
     process_information_ = new PROCESS_INFORMATION;
-    STARTUPINFO             startupInfo;
+    STARTUPINFOW             startupInfo;
     memset(&startupInfo, 0, sizeof(startupInfo));
-    startupInfo.cb = sizeof(STARTUPINFO);
-
-    was_created_ = CreateProcess(&target_exe[0], &p_command_args[0], NULL, NULL, FALSE,
+    startupInfo.cb = sizeof(startupInfo);
+    std::string pca = p_command_args;
+    auto texe = widen(target_exe);
+    auto pargs = widen(pca);
+    was_created_ = CreateProcessW(&texe[0], &pargs[0], NULL, NULL, FALSE,
                                  dwCreationFlags, NULL, NULL, &startupInfo, process_information_);
   }
 

@@ -22,8 +22,13 @@
 
 #include "FileLog.h"
 
+#include "Memory.h"
+#include "Process.h"
+
 #include <io.h> // for _chsize_s()
 #include <chrono>
+#include <iostream>
+#include <filesystem>
 #include <thread>
 
 using namespace std;
@@ -39,27 +44,30 @@ namespace WinTime
     : filename_(filename),
       openmode_(mode)
   {
+    // First, make sure the file exists:
+    auto wfile = widen(filename_);
+    if (!std::filesystem::exists(wfile))
+    {
+      std::wofstream of(wfile);
+      if (!of.is_open())
+      { // this may print bogus characters if non-ascii letters are printed, but
+        // printing to wcerr << wfile will not show non-ascii either, unless fiddling with 
+        // _setmode, which breaks ascii output... well done Microsoft!
+        std::cerr << "Could not open file " << filename_ << ". Do you have permission to create it in this directory?\n";
+        throw std::runtime_error("Could not open file.");
+      }
+    }
   }
 
   bool LockedFile::tryLock()
   {
-    // First, make sure the file exists:
-    // Opens for reading and appending; creates the file first if it doesn't exist.
-    FILE* tmp = _fsopen(filename_.c_str(), "a", _SH_DENYWR);
-
-    if (!tmp)
-    { // could not create file. Is it locked by someone else?
-      return false;
-    }
-    fclose(tmp); // close the lock, otherwise we cannot lock it again below
-
-    // at this point, the file exists!
+    // at this point, the file exists!  -- see C'tor
 
     // open file for reading and writing (so we can move to the end, depending on 'mode_'.
     // We cannot query for filesize before, because another process might write stuff to the file
     // immediately afterwards (before we _fsopen for just writing in case we found the file being empty; this 
     // would overwrite the other process' data)
-    is_locked_ = ((stream_ = _fsopen(filename_.c_str(), "r+", _SH_DENYWR)) != NULL);
+    is_locked_ = ((stream_ = _wfsopen(&widen(filename_)[0], L"r+", _SH_DENYWR)) != NULL);
 
     if (!is_locked_) return false;
 
@@ -131,7 +139,7 @@ namespace WinTime
     std::stringstream content;
     if (lockf.isFileEmpty())
     { // at start of file .. write header
-      printLineToStream(content, '\t', [](auto type, const char sep) { return type.printHeader(sep); }, Command(), PTime(), ClientProcessMemoryCounter(PROCESS_MEMORY_COUNTERS()));
+      printLineToStream(content, '\t', [](auto type, const char sep) { return type.printHeader(sep); }, Command(), time, pmc);
     }
     printLineToStream(content, '\t', [](auto type, const char sep) { return type.print(sep); }, Command{ cmd }, time, pmc);
     lockf.write(content.str().c_str());

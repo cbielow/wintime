@@ -72,11 +72,13 @@ where `[wintime_options]` is the place for optional arguments to WinTime itself.
 
 ## Features
 
- - peak **RAM** usage
- - total **CPU time** (wall, kernel, user) with high resolution
- - PageFaultCount
- - PeakPagefileUsage
+ - reports:
+    - peak **RAM** usage
+   - total **CPU time** (wall, kernel, user) with high resolution
+   - PageFaultCount
+   - PeakPagefileUsage
  - log file output
+ - supports Unicode program names and arguments via UTF-8 encoding
  - similar command line interface as /usr/bin/time
 
 ## Installation
@@ -129,16 +131,16 @@ Open a [bug report, feature request](https://github.com/cbielow/wintime/issues) 
 
 ## Technical details
 
-WinTime makes heavy use of Windows API functions. It works by launching the target process and immediatedly injecting a Dll into it. Upon termination, the Dll will get notified that the target process is about to finish, and take the opportunity to measure peak ram usage and other metrics. This data will be send to WinTime using named pipes. WinTime itself will measure the CPU time of the target process, which can be done even after the process has exited iff you know the process ID (which we do since we spawned the process).
+WinTime makes heavy use of Windows API functions. WinTime will invoke the target process and measure the CPU time and RAM usage of the target process. This can be done even after the process has exited iff you know the process ID (which we do since we spawned the process).
 The `-o` option allows to write/append the data to a log, which requires some file locking magic to ensure that concurrent access to the log does not mangle its content.
 
 ## How accurate is the data?
 
 ##### RAM
-The RAM usage of the target process is slightly increased by the injected Dll and the Windows functions it calls -- about 1.3 MiB. Similarly, PageFaultCount increases by about 344 (which makes sense for a 4kb page, i.e. 344*4 Kb = 1376 Kb). Those are worst case numbers. If the target process natively calls GetProcessMemoryInfo(), these numbers will go down (due to reused pages). At a bare minimum, the RAM usage will increase by the size of the injected Dll, which is currently ~50 Kb.
+Same as `GetProcessMemoryInfo()` (part of the Windows API).
 
 ##### CPU
-The CPU time (wall time, kernel time, user time) are high resolution, but include some minor overhead of injecting the Dll and time of calling the RAM usage function inside the target process -- on my system that is at most 5 milliseconds (this is how long a process executes which does absolutely nothing except execution of an empty `main()` function plus the overhead of the injected WinTime.dll). 
+The CPU time (wall time, kernel time, user time) are high resolution. 
 
 ## License
 MIT

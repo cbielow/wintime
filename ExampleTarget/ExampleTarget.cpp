@@ -78,18 +78,17 @@ int main(int argc, char** argv)
   if (argc == 1)
   {
     std::cerr << "Usage " << argv[0] << " <MiB alloc> <ms sleep> <stats>\n"
-                 "  MiB alloc: [number] MiB to allocate\n"
-                 "  ms sleep:  [number, optional] Milliseconds to sleep\n"
-                 "  stats:     [any value, optional] Print memory usage using internal functions (useful to estimate overhead of external WinTime)\n";
+                 "  MiB alloc: [number] MiB to allocate (this may take some time, especially for larger allocations)\n"
+                 "  ms sleep:  [number, optional] Milliseconds to sleep (in addition to the time it takes to allocate -- see above)\n"
+                 "  stats:     [any value, optional] Print memory usage using internal functions (useful to compare against the results of an external WinTime call)\n";
   } 
   if (argc >= 2)
   {
     size_t mb = std::abs(atoi(argv[1]));
     std::cerr << "  -- Allocating " << mb << " Mb\n";
-    volatile auto ptr = malloc(mb * 1024 * 1024 + 1);
-    ((char*)ptr)[0] = '\n';
-    std::cerr << "  -- Deallocating\n";
-    free(ptr);
+    size_t bytes_to_allocate = mb * 1024 * 1024;
+    std::string large_data(bytes_to_allocate, 0);
+    volatile char* vd = large_data.data();
   }
   if (argc >= 3)
   {
@@ -103,4 +102,7 @@ int main(int argc, char** argv)
   {
     getMemoryInfo(GetCurrentProcessId());
   }
+  std::cerr << "-- end of ExampleTarget\n\n";
 }
+
+
