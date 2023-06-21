@@ -68,7 +68,7 @@ WinTime64 [wintime_options] -- yourProg.exe -v
 ```
 where `[wintime_options]` is the place for optional arguments to WinTime itself.
 
-
+For a larger project using CMake-based timing of many executables, visit [this blog post on compiler timing](http://www.codems.de/reports/501-2/).
 
 ## Features
 
